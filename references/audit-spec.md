@@ -235,6 +235,21 @@ which is the question the trail exists for.
 - `audit.audit_log` itself is **not** audited (`audited: false` in its manifest), for the
   obvious reason.
 
+### What the trail does not cover
+
+**Schema changes.** The trigger records row changes, not `alter table`. A column added
+by hand in production leaves no entry in `audit.audit_log` — the drift checker is what
+catches it, as `column.undeclared`, and only the next time someone runs it. Say this to
+the owner rather than letting them believe the trail covers everything.
+
+If schema changes genuinely need attributing, that is a separate mechanism: a Postgres
+event trigger on `ddl_command_end` writing to its own table. It is not part of this
+skill, it needs superuser to install, and it is worth proposing only when the owner has
+people making hand edits to production.
+
+**Reads.** Nothing here records who *looked* at a row. If read access needs auditing,
+that is `pgaudit` or application-level logging, and it is a much larger commitment.
+
 Tell the owner these numbers when you set auditing up. A guarantee whose cost is hidden
 gets switched off in a panic six months later.
 
