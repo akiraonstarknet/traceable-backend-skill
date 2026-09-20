@@ -1,0 +1,43 @@
+apiVersion: traceable.dev/v1
+kind: Table
+metadata:
+  name: runs
+  description: >-
+    One row for every execution of a job, including executions that failed or
+    never finished. This is what the Runs page lists.
+  owner: platform
+spec:
+  schema: traceable
+  primary_key: [run_id]
+  audited: false
+  retention: indefinite
+  columns:
+    - name: run_id
+      description: Unique id of this run. Quote it when asking about a specific execution.
+    - name: job_name
+      description: Which job ran.
+    - name: status
+      description: running, succeeded or failed.
+    - name: trigger_source
+      description: Whether it was started by a schedule, an endpoint, or a person.
+    - name: triggered_by
+      description: Who or what started it.
+      sensitivity: personal
+    - name: request_id
+      description: The web request that started it, if any.
+    - name: input_json
+      description: What the job was given when it started.
+    - name: output_json
+      description: What the job produced when it finished.
+    - name: error_message
+      description: Why it failed, in the words of the error. Empty when it succeeded.
+    - name: started_at
+      description: When the run began.
+    - name: finished_at
+      description: When the run ended. Empty while it is still running.
+    - name: duration_ms
+      description: How long the whole run took, in milliseconds.
+    - name: total_cost_usd
+      description: Total model cost of this run in US dollars, added up from its steps.
+    - name: heartbeat_at
+      description: Last sign of life. Used to mark runs whose process died as failed.

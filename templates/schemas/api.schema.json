@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://traceable.dev/schemas/v1/api.schema.json",
+  "title": "Traceable API manifest",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "traceable.dev/v1" },
+    "kind": { "const": "Api" },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "spec": {
+      "type": "object",
+      "required": ["service", "method", "path", "auth", "handler", "data"],
+      "additionalProperties": false,
+      "properties": {
+        "service": { "$ref": "#/$defs/kebabName" },
+        "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+        "path": {
+          "type": "string",
+          "pattern": "^/[A-Za-z0-9\\-_/:.]*$",
+          "description": "Route path as registered, including :params."
+        },
+        "auth": {
+          "enum": ["public", "secured"],
+          "description": "public = no auth middleware on this route; secured = the project's auth middleware is mounted. Both are checked against the live route table."
+        },
+        "handler": { "$ref": "#/$defs/repoPath" },
+        "request": { "$ref": "#/$defs/ioDescription" },
+        "response": { "$ref": "#/$defs/ioDescription" },
+        "data": { "$ref": "#/$defs/dataClaims" },
+        "runs_job": { "$ref": "#/$defs/kebabName" }
+      }
+    }
+  },
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 64
+    },
+    "tableName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 2,
+      "maxLength": 63
+    },
+    "repoPath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._\\-/]+$",
+      "description": "Path relative to the repository root."
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/kebabName" },
+        "description": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 1000,
+          "description": "Plain English, written for the non-coder owner. Rendered verbatim in the DevOps UI."
+        },
+        "owner": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Free-form links to external systems. Never checked."
+        }
+      }
+    },
+    "ioDescription": {
+      "type": "object",
+      "required": ["description"],
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string", "minLength": 10, "maxLength": 1000 }
+      }
+    },
+    "dataClaims": {
+      "type": "object",
+      "required": ["reads", "writes", "must_not_touch"],
+      "additionalProperties": false,
+      "properties": {
+        "reads": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tableName" },
+          "uniqueItems": true,
+          "description": "Tables selected from. Grants SELECT to the actor's role."
+        },
+        "writes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tableName" },
+          "uniqueItems": true,
+          "description": "Tables inserted/updated/deleted. Grants SELECT, INSERT, UPDATE, DELETE."
+        },
+        "must_not_touch": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tableName" },
+          "uniqueItems": true,
+          "description": "Tables this actor must never use. No grant is issued, and any existing grant fails the drift check."
+        }
+      }
+    }
+  }
+}

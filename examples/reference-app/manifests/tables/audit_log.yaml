@@ -1,0 +1,49 @@
+apiVersion: traceable.dev/v1
+kind: Table
+metadata:
+  name: audit_log
+  description: >-
+    Every change ever made to an audited table: what the row looked like before,
+    what it looks like now, who caused it and which request or job run it came
+    from. The database writes these rows itself, so nothing can change data
+    without appearing here.
+  owner: platform
+spec:
+  schema: audit
+  primary_key: [id]
+  audited: false
+  retention: indefinite
+  columns:
+    - name: id
+      description: Sequence number of this change. Higher means later.
+    - name: happened_at
+      description: When the change was committed.
+    - name: table_schema
+      description: Which database schema the changed table is in.
+    - name: table_name
+      description: Which table was changed.
+    - name: operation
+      description: Whether a row was added (INSERT), altered (UPDATE) or removed (DELETE).
+    - name: record_id
+      description: A stable id for the changed row, so one row's whole history can be listed.
+    - name: row_before
+      description: The complete row as it was before the change. Empty for newly added rows.
+      sensitivity: personal
+    - name: row_after
+      description: The complete row as it is after the change. Empty for removed rows.
+      sensitivity: personal
+    - name: changed_columns
+      description: Which fields actually changed, so the reader does not have to compare by eye.
+    - name: actor
+      description: Who or what caused the change, for example an email address or a job name.
+      sensitivity: personal
+    - name: source
+      description: How the change arrived - api, cron, run, migration or manual.
+    - name: request_id
+      description: The web request that caused the change, if it came from one.
+    - name: run_id
+      description: The job run that caused the change, if it came from one.
+    - name: db_role
+      description: Which database login made the change. Reveals writes that bypassed a service.
+    - name: txid
+      description: The database transaction number, so changes made together can be grouped.

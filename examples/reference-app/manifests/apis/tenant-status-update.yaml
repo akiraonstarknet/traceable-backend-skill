@@ -1,0 +1,28 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: tenant-status-update
+  description: >-
+    Suspends or reactivates a customer organisation. The endpoint does not change
+    anything itself: it starts the tenant-status-review job, which checks the
+    reason first and may refuse the change.
+  owner: platform
+spec:
+  service: tenant-admin
+  method: POST
+  path: /api/tenants/:tenantId/status
+  auth: secured
+  handler: src/services/tenant-admin/routes/tenant-status-update.ts
+  request:
+    description: >-
+      The organisation id in the path, and a JSON body with status (active or
+      suspended) and a free-text reason.
+  response:
+    description: >-
+      The run that was started, whether the change was applied or refused, and
+      the organisation as it now stands.
+  data:
+    reads: [tenants]
+    writes: []
+    must_not_touch: [users]
+  runs_job: tenant-status-review

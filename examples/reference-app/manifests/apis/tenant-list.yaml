@@ -1,0 +1,20 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: tenant-list
+  description: >-
+    Lists every customer organisation with its current status, newest first.
+    Read-only.
+  owner: platform
+spec:
+  service: tenant-admin
+  method: GET
+  path: /api/tenants
+  auth: secured
+  handler: src/services/tenant-admin/routes/tenant-list.ts
+  response:
+    description: An array of organisations with id, name, status and when they last changed.
+  data:
+    reads: [tenants]
+    writes: []
+    must_not_touch: [users]

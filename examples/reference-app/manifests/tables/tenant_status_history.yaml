@@ -1,0 +1,39 @@
+apiVersion: traceable.dev/v1
+kind: Table
+metadata:
+  name: tenant_status_history
+  description: >-
+    One row for every attempt to change an organisation's status, including the
+    attempts that were refused. This is the record of why an organisation is
+    suspended, separate from the audit trail.
+  owner: platform
+spec:
+  schema: public
+  primary_key: [id]
+  audited: true
+  retention: indefinite
+  columns:
+    - name: id
+      description: Unique id of this history entry.
+      sensitivity: internal
+    - name: tenant_id
+      description: The organisation this entry is about.
+      sensitivity: internal
+    - name: from_status
+      description: The status the organisation had before this entry.
+      sensitivity: internal
+    - name: to_status
+      description: The status asked for. Equals from_status when the change was refused.
+      sensitivity: internal
+    - name: reason
+      description: The free-text reason given by the person making the change.
+      sensitivity: internal
+    - name: decided_by
+      description: Who or what decided the outcome, for example an email address or a job name.
+      sensitivity: personal
+    - name: run_id
+      description: The job run that produced this entry, so it can be traced step by step.
+      sensitivity: internal
+    - name: created_at
+      description: When this entry was written.
+      sensitivity: internal

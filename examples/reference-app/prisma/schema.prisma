@@ -1,0 +1,50 @@
+// Every model carries @@map with the real table name. Prisma does not pluralise
+// or snake_case on its own, and the drift checker maps the client property back
+// to a table through @@map — without it, manifest table names and real table
+// names silently diverge.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  id               String                @id
+  name             String
+  status           String
+  suspendedReason  String?               @map("suspended_reason")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @default(now()) @map("updated_at")
+  statusHistory    TenantStatusHistory[]
+
+  @@map("tenants")
+}
+
+model TenantStatusHistory {
+  id            String   @id
+  tenantId      String   @map("tenant_id")
+  fromStatus    String   @map("from_status")
+  toStatus      String   @map("to_status")
+  reason        String
+  decidedBy     String   @map("decided_by")
+  runId         String?  @map("run_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@map("tenant_status_history")
+}
+
+// Present so that "must_not_touch: [users]" is a claim about a real table.
+// No service or job in this app has any grant on it.
+model User {
+  id        String   @id
+  email     String   @unique
+  fullName  String   @map("full_name")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+}

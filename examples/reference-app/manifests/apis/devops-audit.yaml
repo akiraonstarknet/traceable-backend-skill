@@ -1,0 +1,20 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: devops-audit
+  description: >-
+    Shows every change made to any recorded table, filtered by table, by who
+    made it, or by the request or job run it came from.
+  owner: platform
+spec:
+  service: devops
+  method: GET
+  path: /devops/audit
+  auth: secured
+  handler: src/devops/pages/devops-audit.ts
+  response:
+    description: An HTML page in the DevOps UI.
+  data:
+    reads: [audit_log]
+    writes: []
+    must_not_touch: [users]

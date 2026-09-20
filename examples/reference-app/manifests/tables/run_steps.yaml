@@ -1,0 +1,61 @@
+apiVersion: traceable.dev/v1
+kind: Table
+metadata:
+  name: run_steps
+  description: >-
+    The steps a run actually took, in order, with what each step was given, what
+    it returned, how long it took, and for decision steps which way it went and
+    why. This is the step-by-step account shown on a run's page.
+  owner: platform
+spec:
+  schema: traceable
+  primary_key: [id]
+  audited: false
+  retention: indefinite
+  columns:
+    - name: id
+      description: Sequence number of this step row.
+    - name: run_id
+      description: Which run this step belongs to.
+    - name: step_index
+      description: Position of this step in the run, starting at 1.
+    - name: step_type
+      description: node for a step that does something, gate for a step that only decides.
+    - name: step_name
+      description: The short internal name of the step.
+    - name: display_name
+      description: The plain-English name shown on the run page, copied in when the step ran.
+    - name: description
+      description: The plain-English explanation of the step, copied in when the step ran.
+    - name: status
+      description: running, succeeded or failed.
+    - name: input_json
+      description: What this step was given.
+    - name: output_json
+      description: What this step returned.
+    - name: gate_decision
+      description: For a decision step, which route it chose.
+    - name: gate_reason
+      description: For a decision step, the plain-English reason it gave for choosing that route.
+    - name: next_step_name
+      description: Which step ran next.
+    - name: error_message
+      description: Why this step failed, in the words of the error.
+    - name: started_at
+      description: When this step began. Written before the step runs, so a crash still shows where.
+    - name: finished_at
+      description: When this step ended.
+    - name: duration_ms
+      description: How long this step took, in milliseconds.
+    - name: node_kind
+      description: code for ordinary steps, llm for steps that call a language model.
+    - name: llm_model
+      description: Which model was called.
+    - name: llm_tokens_in
+      description: How many tokens were sent to the model.
+    - name: llm_tokens_out
+      description: How many tokens the model returned.
+    - name: llm_cost_usd
+      description: Cost of this model call in US dollars.
+    - name: llm_provider_generation_id
+      description: The provider's own id for the call, for reconciling against an invoice.

@@ -1,0 +1,32 @@
+apiVersion: traceable.dev/v1
+kind: Table
+metadata:
+  name: tenants
+  description: >-
+    One row per customer organisation. The status column controls whether people
+    from that organisation can sign in.
+  owner: platform
+spec:
+  schema: public
+  primary_key: [id]
+  audited: true
+  retention: indefinite
+  columns:
+    - name: id
+      description: Unique id of the organisation.
+      sensitivity: internal
+    - name: name
+      description: Display name of the organisation, as it appears on invoices.
+      sensitivity: internal
+    - name: status
+      description: Either active or suspended. Suspended organisations cannot sign in.
+      sensitivity: internal
+    - name: suspended_reason
+      description: The reason recorded when the organisation was last suspended. Empty while active.
+      sensitivity: internal
+    - name: created_at
+      description: When the organisation was first added.
+      sensitivity: internal
+    - name: updated_at
+      description: When any field on this row last changed.
+      sensitivity: internal

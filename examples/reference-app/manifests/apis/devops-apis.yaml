@@ -1,0 +1,21 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: devops-apis
+  description: >-
+    Lists every endpoint this application answers, whether it needs a login, and
+    for each one the tables it reads, the tables it writes and the tables it is
+    not allowed to touch.
+  owner: platform
+spec:
+  service: devops
+  method: GET
+  path: /devops/apis
+  auth: secured
+  handler: src/devops/pages/devops-apis.ts
+  response:
+    description: An HTML page in the DevOps UI.
+  data:
+    reads: []
+    writes: []
+    must_not_touch: [users]

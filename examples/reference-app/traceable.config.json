@@ -1,0 +1,16 @@
+{
+  "manifestsDir": "manifests",
+  "runtimeFacts": "src/traceable/runtime-facts.ts",
+  "managedSchemas": ["public"],
+  "unauditedTables": [
+    "audit.audit_log",
+    "traceable.runs",
+    "traceable.run_steps",
+    "traceable.llm_model_prices"
+  ],
+  "rawQueryAllowlist": ["prisma/", "src/traceable/", "src/devops/", "scripts/"],
+  "authMiddlewareName": "requireAuth",
+  "ownerDatabaseUrlEnv": "DATABASE_URL",
+  "prismaSchema": "prisma/schema.prisma",
+  "srcDir": "src"
+}

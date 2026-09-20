@@ -1,0 +1,64 @@
+apiVersion: traceable.dev/v1
+kind: Job
+metadata:
+  name: tenant-status-review
+  description: >-
+    Decides whether a requested status change for a customer organisation should
+    go ahead. Suspensions have their reason checked by a language model first;
+    reactivations are applied without a check. Either way an entry is written to
+    the status history, so a refusal is as visible as a change.
+  owner: platform
+spec:
+  trigger:
+    type: api
+  entrypoint: src/jobs/tenant-status-review/index.ts
+  data:
+    # tenants is not repeated in reads: a table in writes already carries SELECT,
+    # and listing it twice is a second place for the two to disagree.
+    reads: []
+    writes: [tenants, tenant_status_history]
+    must_not_touch: [users]
+  pipeline:
+    - node: load-tenant
+      display_name: Load the organisation
+      description: >-
+        Reads the organisation that is about to change, so later steps work from
+        what is actually stored rather than what the caller sent.
+      kind: code
+    - gate: check-reason-is-needed
+      display_name: Does this reason need checking?
+      description: >-
+        Suspensions get their reason checked by a model. Reactivations do not,
+        because turning access back on is not the risky direction.
+      routes:
+        needs_check: classify-reason
+        skip_check: apply-status
+    - node: classify-reason
+      display_name: Check the reason makes sense
+      description: >-
+        Asks the model whether the reason given is a real, specific business
+        reason rather than a blank or a placeholder.
+      kind: llm
+      model: anthropic/claude-sonnet-5
+    - gate: accept-or-reject
+      display_name: Was the reason acceptable?
+      description: >-
+        Applies the change when the model accepted the reason, and records a
+        refusal when it did not.
+      routes:
+        accept: apply-status
+        reject: record-rejection
+    - node: apply-status
+      display_name: Apply the new status
+      description: >-
+        Writes the new status on the organisation and adds an entry to its status
+        history saying what changed and why.
+      kind: code
+      terminal: true
+    - node: record-rejection
+      display_name: Record that the change was refused
+      description: >-
+        Leaves the organisation as it was and adds a history entry explaining why
+        nothing changed.
+      kind: code
+      terminal: true

@@ -1,0 +1,20 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: tenant-get
+  description: >-
+    Shows one customer organisation and the last ten entries in its status
+    history, including refused changes. Read-only.
+  owner: platform
+spec:
+  service: tenant-admin
+  method: GET
+  path: /api/tenants/:tenantId
+  auth: secured
+  handler: src/services/tenant-admin/routes/tenant-get.ts
+  response:
+    description: The organisation, plus its recent status history entries.
+  data:
+    reads: [tenants, tenant_status_history]
+    writes: []
+    must_not_touch: [users]

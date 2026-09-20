@@ -1,0 +1,20 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: devops-jobs
+  description: >-
+    Lists every job, when it runs, the steps it is declared to take, and how its
+    recent runs went.
+  owner: platform
+spec:
+  service: devops
+  method: GET
+  path: /devops/jobs
+  auth: secured
+  handler: src/devops/pages/devops-jobs.ts
+  response:
+    description: An HTML page in the DevOps UI.
+  data:
+    reads: [runs]
+    writes: []
+    must_not_touch: [users]
