@@ -153,8 +153,15 @@ create trigger traceable_audit_tenants
 Name pattern: `traceable_audit_<table>`. The checker looks for exactly this and reports
 `audit.trigger-missing` / `audit.trigger-unexpected`.
 
-`templates/sql/011_attach_audit.sql` has a `do` block that attaches the trigger to a list
-of tables, so a migration adding a table adds one line.
+In practice you never write that `create trigger` by hand. `templates/sql/010_audit.sql`
+defines `audit.attach(schema, table)` and `audit.detach(schema, table)`, so a migration
+that adds a table ends with one line:
+
+```sql
+select audit.attach('public', 'tenants');
+```
+
+`attach` drops any existing trigger of that name first, so it is safe to re-run.
 
 ### Doing a legitimate manual edit
 
@@ -217,8 +224,14 @@ which is the question the trail exists for.
   writes/second, not advisable above ~3k.
 - Two jsonb copies of every changed row. Size the retention policy: a table churning
   10k rows/day at 2KB/row is ~7GB/year of audit data.
-- Partition `audit.audit_log` by month if it exceeds ~50M rows, or archive to cold
-  storage. `templates/sql/012_audit_retention.sql` has a monthly-partition variant.
+- Partition `audit.audit_log` by month if you expect it to pass ~50M rows.
+  `templates/sql/012_audit_retention.sql` is a partitioned variant of the table plus
+  `audit.ensure_upcoming_partitions()` and `audit.drop_partitions_before()`. Use it
+  **instead of** the plain table in `010_audit.sql`, and decide early: converting a flat
+  table later means copying every row.
+  A write with no partition to land in fails, and because the audit write is synchronous
+  that fails the business write too — so run `ensure_upcoming_partitions()` on a schedule,
+  ahead of time, not on demand.
 - `audit.audit_log` itself is **not** audited (`audited: false` in its manifest), for the
   obvious reason.
 

@@ -276,7 +276,7 @@ the grants are the guarantee.** Never describe the scan to the owner as the guar
 
 1. starts a Postgres service container,
 2. runs `prisma migrate deploy` as the owner role,
-3. applies `templates/sql/030_roles_grants.sql` as generated from the manifests,
+3. runs `npm run grants:generate` and fails if the committed grants migration differs,
 4. runs `npm run manifests:validate`,
 5. runs `npm run drift`,
 6. uploads `.traceable/drift.json` as an artifact so a failing PR shows the findings.

@@ -132,6 +132,7 @@ references/
 templates/
   schemas/*.json              JSON Schema 2020-12 for each manifest kind
   sql/010_audit.sql           audit_log, context helper, trigger, attach/detach
+  sql/012_audit_retention.sql partitioned audit_log for when the flat table gets big
   sql/020_runs.sql            runs, run_steps, model prices, stalled-run reaper
   CLAUDE.md.snippet.md        the rules, for your project's CLAUDE.md / AGENTS.md
   ci/drift-check.yml          GitHub Actions job that fails the build on drift

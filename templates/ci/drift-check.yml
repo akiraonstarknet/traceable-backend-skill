@@ -32,9 +32,14 @@ jobs:
     env:
       # Owner role: migrations and the checker's catalog queries only.
       DATABASE_URL: postgresql://app_owner:ci_owner_pw@localhost:5432/app
-      # Per-actor URLs. Add one line per service and job; the checker asserts
-      # none of them resolve to the owner role (grant.owner-at-runtime).
+      # One line per service and job, named after the derived role. The checker
+      # only PARSES these (to assert none resolves to the owner role, which would
+      # make every grant meaningless) - it never connects as them, so the
+      # passwords here do not have to be real. Leaving an actor out means that
+      # actor is not covered by grant.owner-at-runtime, so list them all.
       DATABASE_URL_SVC_TENANT_ADMIN: postgresql://svc_tenant_admin:ci_pw@localhost:5432/app
+      DATABASE_URL_SVC_DEVOPS: postgresql://svc_devops:ci_pw@localhost:5432/app
+      DATABASE_URL_SVC_HEALTH: postgresql://svc_health:ci_pw@localhost:5432/app
       DATABASE_URL_JOB_TENANT_STATUS_REVIEW: postgresql://job_tenant_status_review:ci_pw@localhost:5432/app
 
     steps:
@@ -60,8 +65,8 @@ jobs:
       - name: Apply migrations as the owner role
         run: npx prisma migrate deploy
 
-      # Grants are generated FROM the manifests. Regenerating here and applying
-      # catches a generated migration that was committed stale — the common real
+      # Grants are generated FROM the manifests. Regenerating here and comparing
+      # catches a generated migration that was committed stale - the common real
       # failure, and the reason this is not circular.
       - name: Regenerate grants and fail if the committed migration is stale
         run: |
@@ -70,8 +75,6 @@ jobs:
             echo "::error::Generated grants differ from what is committed. Run 'npm run grants:generate' and commit the result."
             exit 1
           }
-
-      - run: npx prisma migrate deploy
 
       - name: Validate manifests
         run: npm run manifests:validate
