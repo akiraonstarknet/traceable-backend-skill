@@ -438,12 +438,16 @@ async function checkDatabase(client) {
         'run npm run grants:generate and apply the migration'));
     }
   }
+  // Postgres roles are cluster-wide, not per-database. On a shared cluster every
+  // other application's svc_* and job_* roles are visible here, so a role is only
+  // this database's concern once it actually holds a privilege in it. A role with
+  // no grants here cannot touch anything here.
+  const rolesWithGrantsHere = new Set(liveGrants.map((g) => g.grantee));
   for (const role of roleSet) {
-    if (!expectedRoles.has(role)) {
-      out.push(finding('role.orphaned', { kind: 'Service', name: role }, null,
-        `role ${role} exists but no manifest implies it`,
-        `drop the role, or add the manifests that justify it`));
-    }
+    if (expectedRoles.has(role) || !rolesWithGrantsHere.has(role)) continue;
+    out.push(finding('role.orphaned', { kind: 'Service', name: role }, null,
+      `role ${role} holds privileges in this database but no manifest implies it`,
+      'drop the role, or add the manifests that justify it'));
   }
 
   // Grants

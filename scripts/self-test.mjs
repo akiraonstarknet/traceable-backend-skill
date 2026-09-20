@@ -174,6 +174,29 @@ export const undeclaredStep: TraceableNode<unknown, unknown> = {
     undo: () => sql('revoke insert on public.tenants from svc_devops'),
   },
   {
+    name: 'a role holding privileges here that no manifest implies is reported',
+    expect: 'role.orphaned',
+    needsDb: true,
+    break: () => {
+      sql('create role svc_left_over nologin');
+      // Only a role that actually holds a privilege in THIS database counts:
+      // Postgres roles are cluster-wide, so a bare role is another database's
+      // business, not drift here.
+      sql('grant select on public.tenants to svc_left_over');
+    },
+    undo: () => {
+      sql('revoke all on public.tenants from svc_left_over');
+      sql('drop role if exists svc_left_over');
+    },
+  },
+  {
+    name: 'a cluster-wide role with no privileges here is NOT reported',
+    expect: null,
+    needsDb: true,
+    break: () => sql('create role svc_other_application nologin'),
+    undo: () => sql('drop role if exists svc_other_application'),
+  },
+  {
     name: 'a missing audit trigger is reported',
     expect: 'audit.trigger-missing',
     needsDb: true,
@@ -224,11 +247,15 @@ for (const c of cases) {
     restore();
     if (c.undo) c.undo();
   }
-  if (ids.includes(c.expect)) {
+  // expect: null means the opposite - this must NOT produce a finding.
+  const ok = c.expect === null ? ids.length === 0 : ids.includes(c.expect);
+  if (ok) {
     console.log(`PASS  ${c.name}`);
   } else {
     console.error(`FAIL  ${c.name}`);
-    console.error(`        expected ${c.expect}, got ${ids.length ? [...new Set(ids)].join(', ') : '(nothing)'}`);
+    console.error(c.expect === null
+      ? `        expected no findings, got ${[...new Set(ids)].join(', ')}`
+      : `        expected ${c.expect}, got ${ids.length ? [...new Set(ids)].join(', ') : '(nothing)'}`);
     failed += 1;
   }
 }

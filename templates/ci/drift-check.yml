@@ -68,13 +68,16 @@ jobs:
       # Grants are generated FROM the manifests. Regenerating here and comparing
       # catches a generated migration that was committed stale - the common real
       # failure, and the reason this is not circular.
-      - name: Regenerate grants and fail if the committed migration is stale
+      # git status, not git diff: a changed grant set produces a NEW migration
+      # directory, and git diff does not see untracked files.
+      - name: Regenerate grants and fail if the committed migrations are stale
         run: |
           npm run grants:generate
-          git diff --exit-code prisma/migrations || {
-            echo "::error::Generated grants differ from what is committed. Run 'npm run grants:generate' and commit the result."
+          if [ -n "$(git status --porcelain prisma/migrations)" ]; then
+            echo "::error::Generated grants differ from what is committed. Run 'npm run grants:generate' and commit the new migration."
+            git status --porcelain prisma/migrations
             exit 1
-          }
+          fi
 
       - name: Validate manifests
         run: npm run manifests:validate

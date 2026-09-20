@@ -111,15 +111,24 @@ Do one table completely before adding a second. The loop is the product.
 ## 6. First service, role and grants
 
 1. `manifests/apis/<name>.yaml` with `service: tenant-admin` and its `data` block.
-2. `npm run grants:generate` — writes
-   `prisma/migrations/<timestamp>_grants/migration.sql` containing `create role`,
-   `grant`, and `revoke` statements derived from every manifest. **Never hand-write
-   grants**; the generator is what keeps them equal to the manifests.
+2. `npm run grants:generate` — writes a **new**
+   `prisma/migrations/<timestamp>_traceable_grants/migration.sql` containing `create
+   role`, `grant` and `revoke` statements derived from every manifest. **Never
+   hand-write grants**; the generator is what keeps them equal to the manifests.
 3. `npx prisma migrate deploy`.
-4. Put the role's connection string in `DATABASE_URL_SVC_TENANT_ADMIN`.
+4. Put the role's connection string in `DATABASE_URL_SVC_TENANT_ADMIN`. Roles are
+   created `NOLOGIN`, so the deployment sets the password out of band and no
+   credential is ever committed.
 
-The generated migration is idempotent and recreates the full grant set each time, so a
-removed `reads` entry produces a `revoke`.
+Each regeneration writes a new migration rather than rewriting the last one. That is
+deliberate: Prisma records migrations as applied by directory name, so rewriting one in
+place makes `migrate deploy` report "no pending migrations" and apply nothing — the
+database ends up with no role for a service the code expects, silently. If nothing
+changed, the generator says so and writes no file.
+
+Each generated migration revokes the full set before granting, and every statement is
+guarded by `to_regclass`, so replaying the chain on a fresh database converges on the
+current state and a removed `reads` entry produces a `revoke`.
 
 ## 7. Runtime facts and the first drift run
 

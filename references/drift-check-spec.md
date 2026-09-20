@@ -118,7 +118,7 @@ entity it concerns, and a message that names real files, endpoints and tables.
 | id | Fires when |
 | --- | --- |
 | `role.missing` | `svc_*` / `job_*` role implied by manifests does not exist |
-| `role.orphaned` | A `svc_*` / `job_*` role exists that no manifest implies |
+| `role.orphaned` | A `svc_*` / `job_*` role holds privileges **in this database** that no manifest implies. Scoped this way because Postgres roles are cluster-wide: on a shared cluster, another application's roles are visible but are not this database's concern |
 | `grant.missing` | `reads` implies SELECT, or `writes` implies INSERT/UPDATE/DELETE, and the grant is absent |
 | `grant.excess` | Role holds a grant no manifest justifies |
 | `grant.forbidden` | Role holds any grant on a table in its `must_not_touch` — including one another endpoint of the same service justified |
@@ -284,4 +284,5 @@ the grants are the guarantee.** Never describe the scan to the owner as the guar
 Step 3 matters: grants are generated *from manifests* into a migration, so CI checks
 the generated grants against the manifests that generated them. That sounds circular but
 is not — it catches a generated migration that was committed stale, which is the common
-real failure.
+real failure. It uses `git status --porcelain`, not `git diff`, because a changed grant
+set produces a new migration directory and `git diff` does not see untracked files.

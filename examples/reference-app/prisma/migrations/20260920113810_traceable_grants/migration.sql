@@ -25,23 +25,21 @@ grant usage on schema "traceable" to "job_tenant_status_review";
 grant execute on function audit.set_context(text, text, text, text) to "job_tenant_status_review";
 
 -- llm_model_prices: run history, granted to every job
-grant SELECT on "traceable"."llm_model_prices" to "job_tenant_status_review";
+do $$ begin if to_regclass('traceable.llm_model_prices') is not null then execute 'grant SELECT on "traceable"."llm_model_prices" to "job_tenant_status_review"' ; end if; end $$;
 -- run_steps: run history, granted to every job
-grant SELECT, INSERT, UPDATE on "traceable"."run_steps" to "job_tenant_status_review";
-grant usage, select on all sequences in schema "traceable" to "job_tenant_status_review";
+do $$ begin if to_regclass('traceable.run_steps') is not null then execute 'grant SELECT, INSERT, UPDATE on "traceable"."run_steps" to "job_tenant_status_review"' ; end if; end $$;
 -- runs: run history, granted to every job
-grant SELECT, INSERT, UPDATE on "traceable"."runs" to "job_tenant_status_review";
-grant usage, select on all sequences in schema "traceable" to "job_tenant_status_review";
+do $$ begin if to_regclass('traceable.runs') is not null then execute 'grant SELECT, INSERT, UPDATE on "traceable"."runs" to "job_tenant_status_review"' ; end if; end $$;
 -- tenant_status_history: manifests/jobs/tenant-status-review.yaml
-grant SELECT, INSERT, UPDATE, DELETE on "public"."tenant_status_history" to "job_tenant_status_review";
-grant usage, select on all sequences in schema "public" to "job_tenant_status_review";
+do $$ begin if to_regclass('public.tenant_status_history') is not null then execute 'grant SELECT, INSERT, UPDATE, DELETE on "public"."tenant_status_history" to "job_tenant_status_review"' ; end if; end $$;
 -- tenants: manifests/jobs/tenant-status-review.yaml
-grant SELECT, INSERT, UPDATE, DELETE on "public"."tenants" to "job_tenant_status_review";
+do $$ begin if to_regclass('public.tenants') is not null then execute 'grant SELECT, INSERT, UPDATE, DELETE on "public"."tenants" to "job_tenant_status_review"' ; end if; end $$;
 grant usage, select on all sequences in schema "public" to "job_tenant_status_review";
+grant usage, select on all sequences in schema "traceable" to "job_tenant_status_review";
 
 -- must_not_touch: these revokes are the enforcement, not a comment.
 -- users: forbidden by manifests/jobs/tenant-status-review.yaml
-revoke all on "public"."users" from "job_tenant_status_review";
+do $$ begin if to_regclass('public.users') is not null then execute 'revoke all on "public"."users" from "job_tenant_status_review"' ; end if; end $$;
 
 -- ------------------------------------------------------------------------
 -- service: devops
@@ -69,19 +67,19 @@ grant usage on schema "traceable" to "svc_devops";
 grant execute on function audit.set_context(text, text, text, text) to "svc_devops";
 
 -- audit_log: manifests/apis/devops-audit.yaml
-grant SELECT on "audit"."audit_log" to "svc_devops";
+do $$ begin if to_regclass('audit.audit_log') is not null then execute 'grant SELECT on "audit"."audit_log" to "svc_devops"' ; end if; end $$;
 -- run_steps: manifests/apis/devops-runs.yaml
-grant SELECT on "traceable"."run_steps" to "svc_devops";
+do $$ begin if to_regclass('traceable.run_steps') is not null then execute 'grant SELECT on "traceable"."run_steps" to "svc_devops"' ; end if; end $$;
 -- runs: manifests/apis/devops-jobs.yaml, manifests/apis/devops-runs.yaml
-grant SELECT on "traceable"."runs" to "svc_devops";
+do $$ begin if to_regclass('traceable.runs') is not null then execute 'grant SELECT on "traceable"."runs" to "svc_devops"' ; end if; end $$;
 -- tenant_status_history: manifests/apis/devops-data.yaml
-grant SELECT on "public"."tenant_status_history" to "svc_devops";
+do $$ begin if to_regclass('public.tenant_status_history') is not null then execute 'grant SELECT on "public"."tenant_status_history" to "svc_devops"' ; end if; end $$;
 -- tenants: manifests/apis/devops-data.yaml
-grant SELECT on "public"."tenants" to "svc_devops";
+do $$ begin if to_regclass('public.tenants') is not null then execute 'grant SELECT on "public"."tenants" to "svc_devops"' ; end if; end $$;
 
 -- must_not_touch: these revokes are the enforcement, not a comment.
 -- users: forbidden by manifests/apis/devops-apis.yaml, manifests/apis/devops-audit.yaml, manifests/apis/devops-data.yaml, manifests/apis/devops-drift.yaml, manifests/apis/devops-home.yaml, manifests/apis/devops-jobs.yaml, manifests/apis/devops-runs.yaml
-revoke all on "public"."users" from "svc_devops";
+do $$ begin if to_regclass('public.users') is not null then execute 'revoke all on "public"."users" from "svc_devops"' ; end if; end $$;
 
 -- ------------------------------------------------------------------------
 -- service: health
@@ -106,11 +104,11 @@ grant execute on function audit.set_context(text, text, text, text) to "svc_heal
 
 -- must_not_touch: these revokes are the enforcement, not a comment.
 -- tenant_status_history: forbidden by manifests/apis/health-check.yaml
-revoke all on "public"."tenant_status_history" from "svc_health";
+do $$ begin if to_regclass('public.tenant_status_history') is not null then execute 'revoke all on "public"."tenant_status_history" from "svc_health"' ; end if; end $$;
 -- tenants: forbidden by manifests/apis/health-check.yaml
-revoke all on "public"."tenants" from "svc_health";
+do $$ begin if to_regclass('public.tenants') is not null then execute 'revoke all on "public"."tenants" from "svc_health"' ; end if; end $$;
 -- users: forbidden by manifests/apis/health-check.yaml
-revoke all on "public"."users" from "svc_health";
+do $$ begin if to_regclass('public.users') is not null then execute 'revoke all on "public"."users" from "svc_health"' ; end if; end $$;
 
 -- ------------------------------------------------------------------------
 -- service: tenant-admin
@@ -134,11 +132,11 @@ grant usage on schema "traceable" to "svc_tenant_admin";
 grant execute on function audit.set_context(text, text, text, text) to "svc_tenant_admin";
 
 -- tenant_status_history: manifests/apis/tenant-get.yaml
-grant SELECT on "public"."tenant_status_history" to "svc_tenant_admin";
+do $$ begin if to_regclass('public.tenant_status_history') is not null then execute 'grant SELECT on "public"."tenant_status_history" to "svc_tenant_admin"' ; end if; end $$;
 -- tenants: manifests/apis/tenant-get.yaml, manifests/apis/tenant-list.yaml, manifests/apis/tenant-status-update.yaml
-grant SELECT on "public"."tenants" to "svc_tenant_admin";
+do $$ begin if to_regclass('public.tenants') is not null then execute 'grant SELECT on "public"."tenants" to "svc_tenant_admin"' ; end if; end $$;
 
 -- must_not_touch: these revokes are the enforcement, not a comment.
 -- users: forbidden by manifests/apis/tenant-get.yaml, manifests/apis/tenant-list.yaml, manifests/apis/tenant-status-update.yaml
-revoke all on "public"."users" from "svc_tenant_admin";
+do $$ begin if to_regclass('public.users') is not null then execute 'revoke all on "public"."users" from "svc_tenant_admin"' ; end if; end $$;
 
