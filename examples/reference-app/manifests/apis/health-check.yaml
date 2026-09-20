@@ -1,0 +1,20 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: health-check
+  description: >-
+    Says whether the application is running. Deliberately public so load
+    balancers can call it without credentials, and it touches no data at all.
+  owner: platform
+spec:
+  service: health
+  method: GET
+  path: /health
+  auth: public
+  handler: src/services/health/routes/health-check.ts
+  response:
+    description: A small JSON object with ok true and the current time.
+  data:
+    reads: []
+    writes: []
+    must_not_touch: [tenants, tenant_status_history, users]

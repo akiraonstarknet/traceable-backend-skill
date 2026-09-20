@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://traceable.dev/schemas/v1/job.schema.json",
+  "title": "Traceable job manifest",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "traceable.dev/v1" },
+    "kind": { "const": "Job" },
+    "metadata": {
+      "type": "object",
+      "required": ["name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/kebabName" },
+        "description": { "type": "string", "minLength": 20, "maxLength": 1000 },
+        "owner": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["trigger", "entrypoint", "data", "pipeline"],
+      "additionalProperties": false,
+      "properties": {
+        "trigger": {
+          "type": "object",
+          "required": ["type"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "enum": ["cron", "api", "manual"] },
+            "schedule": {
+              "type": "string",
+              "pattern": "^\\S+ \\S+ \\S+ \\S+ \\S+$",
+              "description": "Five-field cron expression. Required when type is cron."
+            },
+            "timezone": { "type": "string", "default": "UTC" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "type": { "const": "cron" } }, "required": ["type"] },
+              "then": { "required": ["schedule"] },
+              "else": { "not": { "required": ["schedule"] } }
+            }
+          ]
+        },
+        "entrypoint": { "type": "string", "pattern": "^[A-Za-z0-9._\\-/]+$" },
+        "data": {
+          "type": "object",
+          "required": ["reads", "writes", "must_not_touch"],
+          "additionalProperties": false,
+          "properties": {
+            "reads": { "type": "array", "items": { "$ref": "#/$defs/tableName" }, "uniqueItems": true },
+            "writes": { "type": "array", "items": { "$ref": "#/$defs/tableName" }, "uniqueItems": true },
+            "must_not_touch": { "type": "array", "items": { "$ref": "#/$defs/tableName" }, "uniqueItems": true }
+          }
+        },
+        "pipeline": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "oneOf": [{ "$ref": "#/$defs/nodeStep" }, { "$ref": "#/$defs/gateStep" }]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "kebabName": { "type": "string", "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$", "minLength": 2, "maxLength": 64 },
+    "tableName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 2, "maxLength": 63 },
+    "displayName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 80,
+      "description": "Plain English shown in the Runs page. Nodes are actions, gates are questions."
+    },
+    "nodeStep": {
+      "type": "object",
+      "required": ["node", "display_name", "description", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "node": { "$ref": "#/$defs/kebabName" },
+        "display_name": { "$ref": "#/$defs/displayName" },
+        "description": { "type": "string", "minLength": 10, "maxLength": 500 },
+        "kind": { "enum": ["code", "llm"] },
+        "model": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Model id sent to the provider. Required when kind is llm."
+        },
+        "terminal": { "type": "boolean", "default": false }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "llm" } }, "required": ["kind"] },
+          "then": { "required": ["model"] },
+          "else": { "not": { "required": ["model"] } }
+        }
+      ]
+    },
+    "gateStep": {
+      "type": "object",
+      "required": ["gate", "display_name", "description", "routes"],
+      "additionalProperties": false,
+      "properties": {
+        "gate": { "$ref": "#/$defs/kebabName" },
+        "display_name": { "$ref": "#/$defs/displayName" },
+        "description": { "type": "string", "minLength": 10, "maxLength": 500 },
+        "routes": {
+          "type": "object",
+          "minProperties": 2,
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^(END|[a-z][a-z0-9]*(-[a-z0-9]+)*)$"
+          },
+          "propertyNames": { "pattern": "^[a-z][a-z0-9_]*$" },
+          "description": "Route label to next step name, or the literal END. A gate with one route is not a decision."
+        }
+      }
+    }
+  }
+}

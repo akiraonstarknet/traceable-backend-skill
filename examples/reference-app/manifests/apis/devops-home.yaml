@@ -1,0 +1,19 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: devops-home
+  description: >-
+    Redirects to the APIs page, so /devops is a link that always works.
+  owner: platform
+spec:
+  service: devops
+  method: GET
+  path: /devops
+  auth: secured
+  handler: src/devops/pages/devops-home.ts
+  response:
+    description: An HTML page in the DevOps UI.
+  data:
+    reads: []
+    writes: []
+    must_not_touch: [users]

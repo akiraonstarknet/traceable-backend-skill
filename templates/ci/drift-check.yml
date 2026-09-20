@@ -1,0 +1,90 @@
+# traceable-backend: manifest validation and drift detection in CI.
+# Copy to .github/workflows/drift-check.yml
+#
+# Confirm it actually fails before trusting it: delete a column from a table
+# manifest and push. If CI stays green, the workflow is not wired up correctly.
+
+name: drift-check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app_owner
+          POSTGRES_PASSWORD: ci_owner_pw
+          POSTGRES_DB: app
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Owner role: migrations and the checker's catalog queries only.
+      DATABASE_URL: postgresql://app_owner:ci_owner_pw@localhost:5432/app
+      # Per-actor URLs. Add one line per service and job; the checker asserts
+      # none of them resolve to the owner role (grant.owner-at-runtime).
+      DATABASE_URL_SVC_TENANT_ADMIN: postgresql://svc_tenant_admin:ci_pw@localhost:5432/app
+      DATABASE_URL_JOB_TENANT_STATUS_REVIEW: postgresql://job_tenant_status_review:ci_pw@localhost:5432/app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # The shadow database Prisma uses during `migrate dev` needs CREATEDB, and
+      # generated grants need CREATEROLE. Without these you get P3014 / permission
+      # denied, which look like tooling bugs but are permissions.
+      - name: Grant owner role the privileges migrations need
+        run: |
+          PGPASSWORD=ci_owner_pw psql -h localhost -U app_owner -d app -v ON_ERROR_STOP=1 \
+            -c "alter role app_owner createdb createrole;"
+
+      - run: npx prisma generate
+
+      - name: Apply migrations as the owner role
+        run: npx prisma migrate deploy
+
+      # Grants are generated FROM the manifests. Regenerating here and applying
+      # catches a generated migration that was committed stale — the common real
+      # failure, and the reason this is not circular.
+      - name: Regenerate grants and fail if the committed migration is stale
+        run: |
+          npm run grants:generate
+          git diff --exit-code prisma/migrations || {
+            echo "::error::Generated grants differ from what is committed. Run 'npm run grants:generate' and commit the result."
+            exit 1
+          }
+
+      - run: npx prisma migrate deploy
+
+      - name: Validate manifests
+        run: npm run manifests:validate
+
+      - name: Drift check
+        run: npm run drift
+
+      # Uploaded whether or not the check passed, so a failing PR shows the
+      # findings and a passing one proves the check actually ran.
+      - name: Upload drift report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: .traceable/drift.json
+          if-no-files-found: error

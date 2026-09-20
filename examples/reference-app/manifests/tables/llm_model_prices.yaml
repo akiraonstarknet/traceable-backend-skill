@@ -1,0 +1,23 @@
+apiVersion: traceable.dev/v1
+kind: Table
+metadata:
+  name: llm_model_prices
+  description: >-
+    The price per million tokens used to work out what each model call cost.
+    Kept as data rather than in code so the price in force can be seen, and
+    changed without a deployment.
+  owner: platform
+spec:
+  schema: traceable
+  primary_key: [model]
+  audited: false
+  retention: indefinite
+  columns:
+    - name: model
+      description: The model id, exactly as sent to the provider.
+    - name: input_usd_per_1m
+      description: US dollars charged per million tokens sent to the model.
+    - name: output_usd_per_1m
+      description: US dollars charged per million tokens returned by the model.
+    - name: updated_at
+      description: When this price was last changed.

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://traceable.dev/schemas/v1/table.schema.json",
+  "title": "Traceable table manifest",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": { "const": "traceable.dev/v1" },
+    "kind": { "const": "Table" },
+    "metadata": {
+      "type": "object",
+      "required": ["name", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/tableName" },
+        "description": { "type": "string", "minLength": 20, "maxLength": 1000 },
+        "owner": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["schema", "primary_key", "audited", "columns"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "default": "public" },
+        "primary_key": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/columnName" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "audited": {
+          "type": "boolean",
+          "description": "true attaches audit.log_change(). false is only valid for append-only log tables listed in traceable.config.json unauditedTables."
+        },
+        "retention": {
+          "oneOf": [
+            { "const": "indefinite" },
+            { "type": "string", "pattern": "^[0-9]+ (days|months|years)$" }
+          ],
+          "default": "indefinite",
+          "description": "Machine-readable only. Prose is rejected so the value stays checkable."
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "description"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "$ref": "#/$defs/columnName" },
+              "description": { "type": "string", "minLength": 5, "maxLength": 500 },
+              "sensitivity": {
+                "enum": ["public", "internal", "personal", "secret"],
+                "default": "internal",
+                "description": "personal and secret are masked in the Audit UI by default."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "tableName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 2, "maxLength": 63 },
+    "columnName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$", "minLength": 1, "maxLength": 63 }
+  }
+}

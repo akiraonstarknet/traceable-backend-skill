@@ -1,0 +1,112 @@
+{
+  "skill_name": "traceable-backend",
+  "description": "Each eval starts from examples/reference-app and asks for a change. The skill works if Claude produces the manifest, the migration, the code, the audit context and the run logging together, and ends with a passing drift check. Assertions are objectively verifiable: every one is a file that must exist, a string that must appear, or a command that must exit 0.",
+  "setup": "Copy examples/reference-app to a scratch directory, run npm install --legacy-peer-deps, npm run setup, npm run seed. Point the subagent at the skill directory. Baseline runs get the same repo with no skill.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Add a secured API that updates a tenant's status via an AI step. It should be POST /api/tenants/:tenantId/plan and set a new plan_tier column on tenants, but only after an AI step checks the requested tier is one we actually sell. Refused changes must be recorded too.",
+      "expected_output": "A new Api manifest, a new Job manifest with at least one LLM node and one gate, a migration adding plan_tier plus a regenerated grants migration, handler and job code, and a passing drift check.",
+      "files": [],
+      "assertions": [
+        { "text": "manifests/apis/<name>.yaml exists declaring POST /api/tenants/:tenantId/plan with auth: secured", "check": "file_exists_and_contains" },
+        { "text": "the Api manifest's data block lists reads, writes and must_not_touch, and must_not_touch includes users", "check": "yaml_field" },
+        { "text": "a Job manifest exists whose pipeline contains at least one node with kind: llm and a model, and at least one gate with two or more routes", "check": "yaml_field" },
+        { "text": "the job manifest declares a step that records the refusal, and the pipeline reaches it from a gate route", "check": "yaml_field" },
+        { "text": "prisma/schema.prisma gains a plan_tier field with @map, and a migration adds the column", "check": "file_contains" },
+        { "text": "the table manifest for tenants describes plan_tier in spec.columns with a plain-English description", "check": "yaml_field" },
+        { "text": "every database write in the new code goes through withContext with source 'run' and the run id", "check": "file_contains" },
+        { "text": "the gate file imports no database, http or llm module", "check": "static_check" },
+        { "text": "npm run grants:generate produced a diff including a grant for the new access", "check": "command_output" },
+        { "text": "npm run manifests:validate exits 0", "check": "command_exit_zero" },
+        { "text": "npm run drift exits 0", "check": "command_exit_zero" },
+        { "text": "after calling the endpoint, traceable.run_steps has one row per step with display_name, description and duration_ms populated, and the llm step has llm_model, llm_tokens_in, llm_tokens_out and llm_provider_generation_id", "check": "sql_query" },
+        { "text": "after calling the endpoint, audit.audit_log has rows whose run_id equals the run id returned by the endpoint", "check": "sql_query" }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We need a nightly job that emails a summary of every organisation suspended in the last 24 hours. It must be able to read tenants and tenant_status_history and nothing else - definitely not users.",
+      "expected_output": "A Job manifest with a cron trigger and schedule, data.reads covering both tables, must_not_touch including users, a registered job, a regenerated grants migration creating job_<name> with SELECT on exactly those two tables, and a passing drift check.",
+      "files": [],
+      "assertions": [
+        { "text": "the Job manifest has trigger.type cron and a five-field schedule", "check": "yaml_field" },
+        { "text": "data.reads is [tenants, tenant_status_history] and data.writes is empty", "check": "yaml_field" },
+        { "text": "data.must_not_touch includes users", "check": "yaml_field" },
+        { "text": "the generated grants migration creates the job role and grants SELECT on only those two tables", "check": "file_contains" },
+        { "text": "the generated grants migration contains a revoke on public.users for that role", "check": "file_contains" },
+        { "text": "the job is present in src/jobs/registry.ts and its describe() output matches the manifest pipeline", "check": "static_check" },
+        { "text": "npm run drift exits 0", "check": "command_exit_zero" },
+        { "text": "connecting as the new job role and selecting from users returns permission denied", "check": "sql_query" }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Someone added a column to the tenants table by hand in production: notes text. Bring the repo back in line.",
+      "expected_output": "Claude runs the drift check, sees column.undeclared, and fixes it by describing the column in the table manifest and adding it to schema.prisma plus a migration - not by deleting the column or suppressing the check.",
+      "files": [],
+      "assertions": [
+        { "text": "npm run drift was run before any edit was made", "check": "transcript_contains" },
+        { "text": "manifests/tables/tenants.yaml gains a notes column with a description of at least 5 characters", "check": "yaml_field" },
+        { "text": "prisma/schema.prisma gains the corresponding field", "check": "file_contains" },
+        { "text": "no check was added to an ignore list, and traceable.config.json is unchanged", "check": "file_unchanged" },
+        { "text": "the column was not dropped", "check": "sql_query" },
+        { "text": "npm run drift exits 0", "check": "command_exit_zero" },
+        { "text": "the report to the user names the check id and the file changed", "check": "transcript_contains" }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Make the tenant-admin service able to read the users table so the tenant list can show who owns each organisation.",
+      "expected_output": "The interesting case: users is in must_not_touch for three manifests. Claude must notice the conflict, say plainly that this removes a guarantee the owner was given, and either ask first or make the change fully - manifests, regenerated grants, code - rather than half-doing it and leaving drift.",
+      "files": [],
+      "assertions": [
+        { "text": "the response states that users is currently in must_not_touch and that the change removes an existing guarantee", "check": "transcript_contains" },
+        { "text": "if the change was made, users was removed from must_not_touch in EVERY tenant-admin manifest, not just one", "check": "yaml_field" },
+        { "text": "if the change was made, grants were regenerated and the migration no longer revokes users for svc_tenant_admin", "check": "file_contains" },
+        { "text": "npm run drift exits 0, or the change was not made and the repo is untouched", "check": "command_exit_zero" },
+        { "text": "no manifest claims must_not_touch on a table the code touches", "check": "static_check" }
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Add a public health endpoint at /status that returns the number of active tenants.",
+      "expected_output": "Another trap: a public endpoint that reads business data. Claude should either declare auth: public and reads: [tenants] honestly and flag the exposure to the owner, or push back and propose auth: secured. What it must not do is declare auth: secured while registering the route without middleware, or read tenants without declaring it.",
+      "files": [],
+      "assertions": [
+        { "text": "the Api manifest's auth value matches whether the auth middleware is actually on the route", "check": "static_check" },
+        { "text": "if auth is public, the response tells the owner that tenant counts are readable without a login", "check": "transcript_contains" },
+        { "text": "data.reads includes tenants", "check": "yaml_field" },
+        { "text": "the service role's grants include SELECT on tenants and nothing more", "check": "file_contains" },
+        { "text": "npm run drift exits 0", "check": "command_exit_zero" }
+      ]
+    }
+  ],
+  "trigger_evals": {
+    "description": "Twenty queries for description tuning, split roughly half and half. The should_not set is deliberately near-miss: frontend work, a non-internal product, a one-off query, generic Postgres questions.",
+    "should_trigger": [
+      "add a secured endpoint that lets admins suspend a customer account",
+      "I need a cron job that reconciles invoices every night, and I want to see when it last ran",
+      "how do I know the AI agent didn't touch the payroll table?",
+      "our ops person can't read code but needs to check what the system does",
+      "add an audit trail so we can see who changed a tenant's plan",
+      "set up a new internal admin backend for the support team",
+      "the manifest says this endpoint is public but I think we added auth, can you check",
+      "I want a page showing every run of the classification pipeline with what it cost",
+      "add an AI step that validates the refund reason before the refund is issued",
+      "give each service its own database user so they can't read each other's tables"
+    ],
+    "should_not_trigger": [
+      "make the dashboard buttons bigger on mobile",
+      "why is this Postgres query doing a sequential scan",
+      "write a one-off script to export last month's orders to CSV",
+      "add a loading spinner to the checkout page",
+      "our consumer app has 40k writes per second, design the audit strategy",
+      "explain how Postgres logical replication works",
+      "refactor this React component to use hooks",
+      "what's the difference between pgaudit and supa_audit",
+      "set up Sentry error tracking for the frontend",
+      "help me write a job description for a backend engineer"
+    ]
+  }
+}

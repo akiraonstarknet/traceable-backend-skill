@@ -1,0 +1,20 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: devops-drift
+  description: >-
+    Shows whether the manifests still match the running system, when that was
+    last checked, and exactly what disagrees if anything does.
+  owner: platform
+spec:
+  service: devops
+  method: GET
+  path: /devops/drift
+  auth: secured
+  handler: src/devops/pages/devops-drift.ts
+  response:
+    description: An HTML page in the DevOps UI.
+  data:
+    reads: []
+    writes: []
+    must_not_touch: [users]

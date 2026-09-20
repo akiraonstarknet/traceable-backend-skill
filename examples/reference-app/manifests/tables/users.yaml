@@ -1,0 +1,27 @@
+apiVersion: traceable.dev/v1
+kind: Table
+metadata:
+  name: users
+  description: >-
+    People who can sign in, with their email addresses. Nothing in this
+    application is allowed to read or write it: every service and job lists it in
+    must_not_touch, and no database role has any permission on it.
+  owner: platform
+spec:
+  schema: public
+  primary_key: [id]
+  audited: true
+  retention: indefinite
+  columns:
+    - name: id
+      description: Unique id of the person.
+      sensitivity: internal
+    - name: email
+      description: The person's email address, used to sign in.
+      sensitivity: personal
+    - name: full_name
+      description: The person's name as they entered it.
+      sensitivity: personal
+    - name: created_at
+      description: When the person was first added.
+      sensitivity: internal

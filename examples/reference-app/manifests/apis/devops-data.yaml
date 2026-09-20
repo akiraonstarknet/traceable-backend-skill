@@ -1,0 +1,20 @@
+apiVersion: traceable.dev/v1
+kind: Api
+metadata:
+  name: devops-data
+  description: >-
+    Lists every table, what each column means, whether its changes are recorded,
+    and which endpoints and jobs are allowed to read or write it.
+  owner: platform
+spec:
+  service: devops
+  method: GET
+  path: /devops/data
+  auth: secured
+  handler: src/devops/pages/devops-data.ts
+  response:
+    description: An HTML page in the DevOps UI.
+  data:
+    reads: [tenants, tenant_status_history]
+    writes: []
+    must_not_touch: [users]
